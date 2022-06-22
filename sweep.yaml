@@ -1,0 +1,19 @@
+program: train.py
+method: bayes
+metric:
+  goal: maximize
+  name: accuracy
+parameters:
+  a:
+    values: [1, 2, 3, 4]
+early_terminate:
+  type: hyperband
+  s: 2
+  eta: 3
+  max_iter: 4
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ++debug=False
+  - ${args_no_hyphens}
