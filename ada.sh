@@ -18,6 +18,6 @@ if [[ $v -gt 100 ]]; then
     exit 1
 else
     echo "Success: No uncommited changes"
-    echo "CMD:" $@
-    $@
+    echo "CMD:" $@ ++debug=False
+    $@ ++debug=False
 fi
