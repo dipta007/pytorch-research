@@ -34,7 +34,7 @@ class BaseTrainer:
         # will update later
         self.epoch = 0
         self.total_iterations = 0
-        self.wandb_dict = defaultdict(lambda: 0.0)
+        self.log_dict = defaultdict(lambda: 0.0)
 
         self.es_patience_counter = 0
         self.es_best_metric = float("inf")
@@ -48,7 +48,7 @@ class BaseTrainer:
             for data in tepoch:
                 tepoch.set_description(f"Epoch {self.epoch}")
                 self.model.train()
-                self.wandb_dict = defaultdict(lambda: 0.0)
+                self.log_dict = defaultdict(lambda: 0.0)
 
                 data = to_device(data, self.config.device)
                 y_pred = self.get_prediction(data)
@@ -62,11 +62,11 @@ class BaseTrainer:
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
-                # ? Logging to wandb
-                self.wandb_dict[f"train/loss"] = loss.item()
+                # ? Logging
+                self.log_dict[f"train/loss"] = loss.item()
                 for metric, metric_name in zip(self.metrics, self.metrics_name):
                     mv = metric(y_pred, data)
-                    self.wandb_dict[f"train/{metric_name}"] = mv
+                    self.log_dict[f"train/{metric_name}"] = mv
                 self.log()
 
                 # ? Validation after an interval of steps
@@ -78,7 +78,7 @@ class BaseTrainer:
     @torch.no_grad()
     def eval(self):
         self.model.eval()
-        self.wandb_dict = defaultdict(lambda: 0.0)
+        self.log_dict = defaultdict(lambda: 0.0)
         with tqdm(
             enumerate(self.valid_loader), unit="batch", total=len(self.valid_loader)
         ) as tepoch:
@@ -89,16 +89,16 @@ class BaseTrainer:
                 y_pred = self.get_prediction(data)
                 loss = self.get_loss(y_pred, data, "val")
 
-                # ? Logging to wandb
-                self.wandb_dict[f"val/loss"] += loss.item()
+                # ? Logging
+                self.log_dict[f"val/loss"] += loss.item()
                 for metric, metric_name in zip(self.metrics, self.metrics_name):
                     mv = metric(y_pred, data)
-                    self.wandb_dict[f"val/{metric_name}"] = mv
+                    self.log_dict[f"val/{metric_name}"] = mv
 
                 tepoch.set_postfix(loss=loss.item())
 
         for metric_name in self.metrics_name:
-            self.wandb_dict[f"val/{metric_name}"] /= len(self.valid_loader)
+            self.log_dict[f"val/{metric_name}"] /= len(self.valid_loader)
         self.log()
 
         self.check_for_improvement()
@@ -113,9 +113,9 @@ class BaseTrainer:
             self.eval()
 
     def log(self):
-        self.wandb_dict["iteration"] = self.total_iterations
-        self.wandb_dict["epoch"] = self.epoch
-        wandb_log(self.wandb_dict)
+        self.log_dict["iteration"] = self.total_iterations
+        self.log_dict["epoch"] = self.epoch
+        wandb_log(self.log_dict)
 
     def get_prediction(self, data):
         y_pred = self.model(data)
@@ -126,14 +126,14 @@ class BaseTrainer:
         metric = self.config.train.early_stopping.metric
         prev = self.es_best_metric
         if goal == "max":
-            if self.wandb_dict[metric] > self.es_best_metric:
-                self.es_best_metric = self.wandb_dict[metric]
+            if self.log_dict[metric] > self.es_best_metric:
+                self.es_best_metric = self.log_dict[metric]
                 self.es_patience_counter = 0
             else:
                 self.es_patience_counter += 1
         elif goal == "min":
-            if self.wandb_dict[metric] < self.es_best_metric:
-                self.es_best_metric = self.wandb_dict[metric]
+            if self.log_dict[metric] < self.es_best_metric:
+                self.es_best_metric = self.log_dict[metric]
                 self.es_patience_counter = 0
             else:
                 self.es_patience_counter += 1
@@ -144,13 +144,13 @@ class BaseTrainer:
             )
             wandb_alert(
                 title=f"{metric} Improved, goal: {goal}",
-                text=f"Epoch: {self.epoch} Iteration: {self.total_iterations} Current {metric}: {self.wandb_dict[metric]} Previous {goal} {metric}: {prev}",
+                text=f"Epoch: {self.epoch} Iteration: {self.total_iterations} Current {metric}: {self.log_dict[metric]} Previous {goal} {metric}: {prev}",
                 level=AlertLevel.INFO,
             )
         else:
             wandb_alert(
                 title=f"{metric} Not Improved, goal: {goal}",
-                text=f"Epoch: {self.epoch} Iteration: {self.total_iterations} Patience: {self.es_patience_counter} Current {metric}: {self.wandb_dict[metric]} Current {goal} {metric}: {self.es_best_metric}",
+                text=f"Epoch: {self.epoch} Iteration: {self.total_iterations} Patience: {self.es_patience_counter} Current {metric}: {self.log_dict[metric]} Current {goal} {metric}: {self.es_best_metric}",
                 level=AlertLevel.WARN,
             )
 
