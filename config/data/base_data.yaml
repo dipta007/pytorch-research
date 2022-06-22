@@ -1,0 +1,14 @@
+train:
+  _target_: src.dataset.steps_dataset.STEPSDataset
+  paths: data/wiki/train.tsv
+  batch_size: 256
+
+val:
+  _target_: src.dataset.steps_dataset.STEPSDataset
+  paths: data/wiki/validation.tsv
+  batch_size: 1
+
+test:
+  _target_: src.dataset.steps_dataset.STEPSDataset
+  paths: data/wiki/test.tsv
+  batch_size: 1

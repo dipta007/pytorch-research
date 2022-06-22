@@ -1,0 +1,25 @@
+train:
+  _partial_: True
+  _target_: dataloaders.naacl_dataset.SentenceDatasetWithBart
+  paths: [data/NAACL/train_0.6_TUP.txt, data/NAACL/train_0.6_frame.txt]
+  fields: [text, target, ref, frame]
+  # batch_size: 256
+
+val:
+  _partial_: True
+  _target_: dataloaders.naacl_dataset.SentenceDatasetWithBart
+  paths: [data/NAACL/valid_0.6_TUP.txt, data/NAACL/valid_0.6_frame.txt]
+  fields: [text, label]
+  # batch_size: 1
+
+test:
+  _partial_: True
+  _target_: dataloaders.naacl_dataset.SentenceDatasetWithBart
+  paths: [data/NAACL/test_0.6_TUP.txt, data/NAACL/test_0.6_frame.txt]
+  fields: [text, label]
+  # batch_size: 1
+
+vocab: "facebook/bart-base"
+vocab2: "data/NAACL/vocab_frame_500.pkl"
+seq_len: 200
+batch_size: 32
