@@ -5,7 +5,8 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from utils.utils import ensure_dir, save_model, to_device, wandb_log
+from utils.utils import ensure_dir, save_model, to_device, wandb_alert, wandb_log
+from wandb import AlertLevel
 
 log = logging.getLogger(__name__)
 
@@ -123,6 +124,7 @@ class BaseTrainer:
     def check_for_improvement(self):
         goal = self.config.train.early_stopping.goal
         metric = self.config.train.early_stopping.metric
+        prev = self.es_best_metric
         if goal == "max":
             if self.wandb_dict[metric] > self.es_best_metric:
                 self.es_best_metric = self.wandb_dict[metric]
@@ -139,6 +141,17 @@ class BaseTrainer:
         if self.es_patience_counter == 0:
             save_model(
                 self.model, f"{self.config.train.model_dir}/{self.config.exp_name}.pt"
+            )
+            wandb_alert(
+                title=f"{metric} Improved, goal: {goal}",
+                text=f"Epoch: {self.epoch} Iteration: {self.total_iterations} Current {metric}: {self.wandb_dict[metric]} Previous {goal} {metric}: {prev}",
+                level=AlertLevel.INFO,
+            )
+        else:
+            wandb_alert(
+                title=f"{metric} Not Improved, goal: {goal}",
+                text=f"Epoch: {self.epoch} Iteration: {self.total_iterations} Patience: {self.es_patience_counter} Current {metric}: {self.wandb_dict[metric]} Current {goal} {metric}: {self.es_best_metric}",
+                level=AlertLevel.WARN,
             )
 
     def check_early_stopping(self):
