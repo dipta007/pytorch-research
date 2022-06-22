@@ -12,11 +12,11 @@
    2. isort
 
 ## Need to do:
-- [] Edit `sweep.yaml` to change the hyperparameters
-- [] tally parameters trainable and non-trainable
-- [] Resume run from checkpoint with wandb integration
-- [] Add logging to each step
-- [] List of schedulers to trainer
+- [ ] Edit `sweep.yaml` to change the hyperparameters
+- [ ] tally parameters trainable and non-trainable
+- [ ] Resume run from checkpoint with wandb integration
+- [ ] Add logging to each step
+- [ ] List of schedulers to trainer
 
 ## Sweep on SLURM
 1. Edit `sweep.yaml` file accordingly
