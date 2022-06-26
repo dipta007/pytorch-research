@@ -1,37 +1,43 @@
+import json
 import logging
+import time
 from collections import defaultdict
 
 import torch
-from torch import nn
 from tqdm import tqdm
 
-from utils.utils import ensure_dir, save_model, to_device, wandb_alert, wandb_log
+from utils.utils import (
+    ensure_dir,
+    save_model,
+    summary_model,
+    to_device,
+    wandb_alert,
+    wandb_log,
+    wandb_summary,
+)
 from wandb import AlertLevel
 
 log = logging.getLogger(__name__)
 
 
 class BaseTrainer:
-    def __init__(self, config, model, metrics=[], metrics_name=[]):
+    def __init__(self, config, optimizer, model):
         self.config = config
-        self.model = to_device(model, self.config.device)
+
+        self.optimizer_partial = optimizer
+        self.model = model(config=self.config)
+        self.model = to_device(self.model, self.config.device)
         self.optimizer = self.get_optimizer()
 
-        self.metrics = metrics
-        self.metrics_name = metrics_name
-        if len(self.metrics_name) == 0:
-            self.metric_names = [m.__name__ for m in metrics]
-
-        assert len(self.metrics_name) == len(
-            self.metrics
-        ), "metrics_name and metrics must have the same length"
+        summary_model(self.model)
+        # wandb_watch(self.model)
 
         self.grad_accum = max(
             1, self.config.train.desired_batch_size // self.config.data.batch_size
         )
         log.info(f"Gradient accumulation: {self.grad_accum}")
 
-        # will update later
+        # will update later during running epoch
         self.epoch = 0
         self.total_iterations = 0
         self.log_dict = defaultdict(lambda: 0.0)
@@ -43,16 +49,16 @@ class BaseTrainer:
 
     def train(self):
         with tqdm(
-            self.train_loader, unit="batch", total=len(self.train_loader)
+            enumerate(self.train_loader), unit="batch", total=len(self.train_loader)
         ) as tepoch:
-            for data in tepoch:
+            for _, data in tepoch:
                 tepoch.set_description(f"Epoch {self.epoch}")
                 self.model.train()
                 self.log_dict = defaultdict(lambda: 0.0)
 
                 data = to_device(data, self.config.device)
-                y_pred = self.get_prediction(data)
-                loss = self.get_loss(y_pred, data, "train")
+                pred = self.model(data)
+                loss = self.get_loss(pred, data, "train")
 
                 loss.backward()
                 self.total_iterations += 1
@@ -60,14 +66,11 @@ class BaseTrainer:
                 # ? Gradient accumulation & Update
                 if self.total_iterations % self.grad_accum == 0:
                     self.optimizer.step()
-                    self.optimizer.zero_grad()
+                    self.model.zero_grad()
 
-                # ? Logging
-                self.log_dict[f"train/loss"] = loss.item()
-                for metric, metric_name in zip(self.metrics, self.metrics_name):
-                    mv = metric(y_pred, data)
-                    self.log_dict[f"train/{metric_name}"] = mv
-                self.log()
+                # ? Logging to wandb
+                self.run_metrics(data, pred, "train")
+                self.log(console_log=False)
 
                 # ? Validation after an interval of steps
                 if self.total_iterations % self.config.train.validate_every == 0:
@@ -80,26 +83,24 @@ class BaseTrainer:
         self.model.eval()
         self.log_dict = defaultdict(lambda: 0.0)
         with tqdm(
-            enumerate(self.valid_loader), unit="batch", total=len(self.valid_loader)
+            self.valid_loader, unit="batch", total=len(self.valid_loader)
         ) as tepoch:
-            for _, data in tepoch:
+            for data in tepoch:
                 tepoch.set_description(f"Validation")
 
                 data = to_device(data, self.config.device)
-                y_pred = self.get_prediction(data)
-                loss = self.get_loss(y_pred, data, "val")
+                pred = self.model(data)
+                loss = self.get_loss(pred, data, "val")
 
-                # ? Logging
-                self.log_dict[f"val/loss"] += loss.item()
-                for metric, metric_name in zip(self.metrics, self.metrics_name):
-                    mv = metric(y_pred, data)
-                    self.log_dict[f"val/{metric_name}"] = mv
+                # ? Logging to wandb
+                self.run_metrics(data, pred, "val")
 
                 tepoch.set_postfix(loss=loss.item())
 
-        for metric_name in self.metrics_name:
-            self.log_dict[f"val/{metric_name}"] /= len(self.valid_loader)
-        self.log()
+        for key in self.log_dict.keys():
+            self.log_dict[key] /= len(self.valid_loader)
+
+        self.log(console_log=True)
 
         self.check_for_improvement()
         self.check_early_stopping()
@@ -108,18 +109,21 @@ class BaseTrainer:
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         for epoch in range(self.config.train.epochs):
+            start_time = time.time()
+
             self.epoch = epoch
             self.train()
             self.eval()
 
-    def log(self):
+            log.info(f"Epoch {epoch} Completed. Took time: {time.time() - start_time}")
+            start_time = time.time()
+
+    def log(self, console_log=False):
         self.log_dict["iteration"] = self.total_iterations
         self.log_dict["epoch"] = self.epoch
         wandb_log(self.log_dict)
-
-    def get_prediction(self, data):
-        y_pred = self.model(data)
-        return y_pred
+        if console_log:
+            log.info(f"Current wandb dict:\n{json.dumps(self.log_dict, indent=4)}")
 
     def check_for_improvement(self):
         goal = self.config.train.early_stopping.goal
@@ -138,6 +142,7 @@ class BaseTrainer:
             else:
                 self.es_patience_counter += 1
 
+        wandb_summary(f"{goal}_{metric}", self.es_best_metric)
         if self.es_patience_counter == 0:
             save_model(
                 self.model, f"{self.config.train.model_dir}/{self.config.exp_name}.pt"
@@ -174,9 +179,11 @@ class BaseTrainer:
             },
             path,
         )
+        log.info(f"Saved checkpoint to {path}")
 
     def load_checkpoint(self, epoch, total_iterations):
         path = f"{self.config.train.checkpoint_dir}/checkpoint_epoch_{epoch}_iter_{total_iterations}.pt"
+        log.info(f"Loading checkpoint from path: {path}")
         checkpoint = torch.load(path)
         self.epoch = checkpoint["epoch"]
         self.total_iterations = checkpoint["total_iterations"]
@@ -184,8 +191,16 @@ class BaseTrainer:
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.model = to_device(self.model)
 
-    def get_loss(self, y_pred, data, mode="train"):
-        raise NotImplementedError
+    def run(self):
+        log.info("Starting Training....")
+        self.fit(self.train_dataloader, self.val_dataloader)
 
     def get_optimizer(self):
+        log.info(f"Using optimizer: {self.optimizer_partial}")
+        return self.optimizer_partial(params=self.model.parameters())
+
+    def run_metrics(self, data, pred, mode="train"):
+        log.info("No metrics provided/needed")
+
+    def get_loss(self, pred, data, mode="train"):
         raise NotImplementedError

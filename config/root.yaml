@@ -26,4 +26,4 @@ exp_num: 1234
 exp_name: exp_${exp_num}
 seed: 10
 cuda: True
-obsv_prob: 0.2
+obsv_prob: 0.9

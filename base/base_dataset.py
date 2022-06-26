@@ -1,16 +1,23 @@
-import torch
-from torch.utils.data import Dataset
+import logging
+
+import hydra
+from torch.utils.data import DataLoader, Dataset
+
+log = logging.getLogger(__name__)
 
 
 class BaseDataset(Dataset):
     def __init__(self, paths, fields=["x", "y"]):
         super().__init__()
 
+        self.paths = paths
+        self.fields = fields
+
     def __getitem__(self, index):
-        raise NotImplementedError
+        return self.data[index]
 
     def __len__(self):
-        raise NotImplementedError
+        return len(self.data)
 
     def collate_fn(self, batch):
         """
@@ -35,6 +42,15 @@ class BaseDataset(Dataset):
         # #? make dictionary
         # ret = {x: y for x, y in zip(self.fields, x)}
         # ret['target'] = y
-        ret = {}
 
-        return ret
+        return batch
+
+
+def get_data(config, target, dataset_args, dataloader_args):
+    log.info("Data loading....")
+    dataset = hydra.utils.instantiate(target)(config=config, **dataset_args)
+    dataloader = DataLoader(dataset, collate_fn=dataset.collate_fn, **dataloader_args)
+    log.info(
+        f"Data Loaded, data length: {len(dataset)}, batch length: {len(dataloader)}"
+    )
+    return dataset, dataloader

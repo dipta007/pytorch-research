@@ -9,7 +9,7 @@ val:
   _partial_: True
   _target_: dataloaders.naacl_dataset.SentenceDatasetWithBart
   paths: [data/NAACL/valid_0.6_TUP.txt, data/NAACL/valid_0.6_frame.txt]
-  fields: [text, label]
+  fields: [text, target, ref, frame]
   # batch_size: 1
 
 test:

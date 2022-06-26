@@ -1,5 +1,4 @@
 import logging
-from random import random
 
 import hydra
 import omegaconf
@@ -21,8 +20,12 @@ log = logging.getLogger(__name__)
 def main(cfg):
     config = omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     config = DotDict(config)
-    config.cuda = config.cuda and torch.cuda.is_available()
-    config.device = "cuda" if config.cuda else "cpu"
+    config.cuda = config.cuda and (
+        torch.cuda.is_available() or torch.backends.mps.is_available()
+    )
+    config.device = (
+        ("cuda" if torch.cuda.is_available() else "mps") if config.cuda else "cpu"
+    )
     if not config.debug:
         run = wandb.init(
             name=cfg.exp_name,
@@ -32,12 +35,12 @@ def main(cfg):
             settings=wandb.Settings(start_method="thread"),
         )
         wandb_log_code(run)
-        config = wandb.config
+        config = DotDict(wandb.config)
 
     print_repo_info()
     print_config(config)
 
-    log.info("Seeding with {}....".format(config.seed))
+    log.info(f"Running on {config.device}")
     seed_everything(config.seed)
 
     trainer = hydra.utils.instantiate(config.train.trainer)(config=config)

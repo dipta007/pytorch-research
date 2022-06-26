@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pickle
 import random
 import subprocess
 import sys
@@ -8,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from prettytable import PrettyTable
 from torch import nn
 
 import wandb
@@ -41,16 +43,16 @@ class DotDict(dict):
 
 
 def seed_everything(seed=42):
+    log.info("Seeding with {}....".format(seed))
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = (
-        False  # if input size is fixed for every iteration, set to True
-    )
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    # if input size is fixed for every iteration, set to True
+    torch.backends.cudnn.benchmark = True
 
 
 def get_repo_name():
@@ -92,7 +94,7 @@ def to_device(data, device):
     if isinstance(data, list):
         return [to_device(x, device) for x in data]
     if isinstance(data, dict):
-        return {k: to_device(v, device) for k, v in data.items()}
+        return DotDict({k: to_device(v, device) for k, v in data.items()})
     if isinstance(data, tuple):
         return tuple(to_device(x, device) for x in data)
     if isinstance(data, nn.Module):
@@ -124,6 +126,20 @@ def wandb_log(wandb_dict):
         pass
 
 
+def wandb_summary(name, value):
+    try:
+        wandb.run.summary[name] = value
+    except Exception as e:
+        pass
+
+
+def wandb_watch(model):
+    try:
+        wandb.watch(model, log="all")
+    except Exception as e:
+        pass
+
+
 def wandb_log_code(run):
     included_files = [
         ".py",
@@ -140,8 +156,64 @@ def wandb_log_code(run):
 def save_model(model, path):
     dir = "/".join(path.split("/")[:-1])
     ensure_dir(dir)
+    log.info(f"Saving model to {path}")
     torch.save(model, path)
 
 
-def load_model(path):
-    return torch.load(path)
+def load_model(path, device="cpu"):
+    return torch.load(path, map_location=device)
+
+
+def save_pickle(obj, path):
+    dir = "/".join(path.split("/")[:-1])
+    ensure_dir(dir)
+    with open(path, "wb") as f:
+        pickle.dump(obj, f)
+
+
+def load_pickle(path):
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+def summary_model(model, show_all=False):
+    table = PrettyTable(["Modules", "Parameters"])
+    total_params = 0
+    for name, parameter in model.named_parameters():
+        if not parameter.requires_grad and not show_all:
+            continue
+        params = parameter.numel()
+        table.add_row([name, params])
+        total_params += params
+    log.info(f"\n{table}\n")
+    count_parameters(model)
+    return total_params
+
+
+def count_parameters(model):
+    log.info(sum(p.numel() for p in model.parameters()))
+    log.info(sum(p.numel() for p in model.parameters() if p.requires_grad))
+
+
+# TODO: need to add more cases
+def is_equal(a, b):
+    if isinstance(a, tuple):
+        for i in range(len(a)):
+            if not is_equal(a[i], b[i]):
+                return False
+            return True
+    if isinstance(a, dict):
+        for k, v in a.items():
+            if not is_equal(v, b[k]):
+                print(k)
+                return False
+        return True
+    if isinstance(a, list):
+        for i, v in enumerate(a):
+            if not is_equal(v, b[i]):
+                return False
+        return True
+    if isinstance(a, torch.Tensor):
+        return torch.equal(a, b)
+
+    return a == b
