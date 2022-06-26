@@ -28,6 +28,7 @@ class BaseTrainer:
         self.model = model(config=self.config)
         self.model = to_device(self.model, self.config.device)
         self.optimizer = self.get_optimizer()
+        self.schedulers = self.get_schedulers()
 
         summary_model(self.model)
         # wandb_watch(self.model)
@@ -115,6 +116,9 @@ class BaseTrainer:
             self.train()
             self.eval()
 
+            for scheduler in self.schedulers:
+                scheduler.step()
+
             log.info(f"Epoch {epoch} Completed. Took time: {time.time() - start_time}")
             start_time = time.time()
 
@@ -198,6 +202,9 @@ class BaseTrainer:
     def get_optimizer(self):
         log.info(f"Using optimizer: {self.optimizer_partial}")
         return self.optimizer_partial(params=self.model.parameters())
+
+    def get_schedulers(self):
+        return []
 
     def run_metrics(self, data, pred, mode="train"):
         log.info("No metrics provided/needed")

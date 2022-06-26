@@ -7,9 +7,11 @@
    2. Implement `get_loss`
    3. Implement `run_metrics` if needed
    4. Implement `get_optimizer` if needed
+   5. Implement `get_schedulers` if needed
 5. Add config to `config` folder
-6. Add tests class on `inference` folder
-7. Run tests from `test.py`
+6. Run training from `train.py`
+7. Add tests class on `inference` folder
+8. Run tests from `test.py`
 
 ## References:
 1. [Wandb with Hydra](https://wandb.ai/adrishd/hydra-example/reports/Configuring-W-B-Projects-with-Hydra--VmlldzoxNTA2MzQw)
@@ -26,14 +28,14 @@
    2. isort
 6. CUDA, cpu or Apple mps support
 7. wandb sweep for hyperparameter finding
-8.
+8. PyTorch scheduler support
 
-## Need to do:
+## To do:
 - [ ] Edit `sweep.yaml` to change the hyperparameters
 - [x] tally parameters trainable and non-trainable
 - [ ] Resume run from checkpoint with wandb integration
 - [x] Add logging.info() to each step
-- [ ] List of schedulers to trainer
+- [x] Schedulers to trainer
 - [ ] Add GPU memory profiling
 - [ ] Add example
 
