@@ -34,6 +34,7 @@ def main(cfg):
             config=config,
             settings=wandb.Settings(start_method="thread"),
         )
+        log.info(f"WANDB url: {wandb.run.get_url()}")
         wandb_log_code(run)
         config = DotDict(wandb.config)
 
