@@ -1,8 +1,11 @@
+# https://docs.wandb.ai/guides/sweeps/configuration
+entity: dipta007
+project: pytorch-research
 program: train.py
 method: bayes
 metric:
-  goal: maximize
-  name: accuracy
+  goal: minimize
+  name: val/ppl
 parameters:
   a:
     values: [1, 2, 3, 4]
