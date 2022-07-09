@@ -27,7 +27,7 @@ def main(config):
     )
 
     model = load_model(
-        f"./experiments/exp_{config.exp_num}/models/exp_{config.exp_num}.pt",
+        f"./experiments/{config.exp_name}/models/{config.exp_name}.pt",
         config.device,
     )
     model = to_device(model, config.device)
@@ -54,7 +54,7 @@ def main(config):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exp_num", type=int, required=True, help="exp_num")
+    parser.add_argument("--exp_name", type=str, required=True, help="exp_name")
     parser.add_argument("--test_type", type=str, required=True, help="test_type")
     parser.add_argument("--cuda", type=bool, default=True, help="cuda")
     parser.add_argument(
