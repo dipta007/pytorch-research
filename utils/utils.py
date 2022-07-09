@@ -1,4 +1,5 @@
 import json
+import linecache
 import logging
 import os
 import pickle
@@ -191,8 +192,10 @@ def summary_model(model, show_all=False):
 
 
 def count_parameters(model):
-    log.info(sum(p.numel() for p in model.parameters()))
-    log.info(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    log.info(f"Number of All Parameters: {sum(p.numel() for p in model.parameters())}")
+    log.info(
+        f"Number of Required grad Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}"
+    )
 
 
 # TODO: need to add more cases
@@ -217,3 +220,14 @@ def is_equal(a, b):
         return torch.equal(a, b)
 
     return a == b
+
+
+def get_file_line_count(p):
+    tot = subprocess.check_output(["wc", "-l", p]).decode().strip().split()[0]
+    return int(tot)
+
+
+def get_file_line(file, line_num):
+    # file is indexed from 1
+    line_num = line_num + 1
+    return linecache.getline(file, line_num).strip()
