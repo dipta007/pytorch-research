@@ -157,7 +157,6 @@ def wandb_log_code(run):
 def save_model(model, path):
     dir = "/".join(path.split("/")[:-1])
     ensure_dir(dir)
-    log.info(f"Saving model to {path}")
     torch.save(model, path)
 
 
@@ -231,3 +230,8 @@ def get_file_line(file, line_num):
     # file is indexed from 1
     line_num = line_num + 1
     return linecache.getline(file, line_num).strip()
+
+
+def safe_log(val):
+    eps = 1e-7
+    return torch.log(val + eps)
