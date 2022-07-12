@@ -60,6 +60,7 @@ class BaseTrainer:
                 data = to_device(data, self.config.device)
                 pred = self.model(data)
                 loss = self.get_loss(pred, data, "train")
+                loss = loss / self.grad_accum
 
                 loss.backward()
                 self.total_iterations += 1
