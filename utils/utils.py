@@ -142,16 +142,39 @@ def wandb_watch(model):
 
 
 def wandb_log_code(run):
-    included_files = [
-        ".py",
-        ".yaml",
-        ".ipynb",
-        ".md",
-        ".sh",
-    ]
-    run.log_code(
-        "./", include_fn=lambda f: any(f.endswith(ext) for ext in included_files)
-    )
+    def include(path):
+        included_files = [
+            ".py",
+            ".yaml",
+            ".ipynb",
+            ".md",
+            ".sh",
+        ]
+        if any(path.endswith(ext) for ext in included_files):
+            return True
+        return False
+
+    def exclude(path):
+        exclude_dirs = [
+            "__pycache__",
+            "wandb",
+            ".history",
+            ".git",
+            ".idea",
+            ".vscode",
+            ".venv",
+            ".DS_Store",
+            ".ipynb_checkpoints",
+            ".vector_cache",
+            "nltk_data",
+            "corpora" "log",
+            "experiments",
+        ]
+        if any(f"{ext}/" in path for ext in exclude_dirs):
+            return True
+        return False
+
+    run.log_code("./", include_fn=include, exclude_fn=exclude)
 
 
 def save_model(model, path):
