@@ -15,6 +15,7 @@ from utils.utils import (
     wandb_alert,
     wandb_log,
     wandb_summary,
+    wandb_watch,
 )
 from wandb import AlertLevel
 
@@ -32,7 +33,6 @@ class BaseTrainer:
         self.schedulers = self.get_schedulers()
 
         summary_model(self.model)
-        # wandb_watch(self.model)
 
         self.grad_accum = max(
             1, self.config.train.desired_batch_size // self.config.data.batch_size
@@ -109,6 +109,7 @@ class BaseTrainer:
         self.check_early_stopping()
 
     def fit(self, train_loader, valid_loader):
+        wandb_watch(self.model)
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         for epoch in range(self.config.train.epochs):

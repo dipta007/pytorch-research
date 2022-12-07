@@ -184,7 +184,9 @@ def save_model(model, path):
 
 
 def load_model(path, device="cpu"):
-    return torch.load(path, map_location=device)
+    model = torch.load(path)
+    model = to_device(model, device)
+    return model
 
 
 def save_pickle(obj, path):
