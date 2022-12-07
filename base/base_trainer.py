@@ -61,9 +61,14 @@ class BaseTrainer:
                 data = to_device(data, self.config.device)
                 pred = self.model(data)
                 loss = self.get_loss(pred, data, "train")
-                loss = loss / self.grad_accum
+                # TODO: check if its needed or not
+                # loss = loss / self.grad_accum
 
                 loss.backward()
+                if self.config.train.grad_clip.enabled:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.model.parameters(), self.config.train.grad_clip.val
+                    )
                 self.total_iterations += 1
 
                 # ? Gradient accumulation & Update

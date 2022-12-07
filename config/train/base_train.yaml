@@ -7,6 +7,10 @@ early_stopping:
   metric: val/ppl
   goal: min
 
+grad_clip:
+  enabled: True
+  val: 5.0
+
 desired_batch_size: 512
 
 model_dir: ${hydra:run.dir}/models
