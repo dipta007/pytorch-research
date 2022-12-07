@@ -26,7 +26,7 @@ class BaseTrainer:
         self.config = config
 
         self.optimizer_partial = optimizer
-        self.model = model(config=self.config)
+        self.model = model
         self.model = to_device(self.model, self.config.device)
         self.optimizer = self.get_optimizer()
         self.schedulers = self.get_schedulers()
