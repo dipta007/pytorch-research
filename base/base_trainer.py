@@ -15,7 +15,6 @@ from utils.utils import (
     wandb_alert,
     wandb_log,
     wandb_summary,
-    wandb_watch,
 )
 from wandb import AlertLevel
 
@@ -114,7 +113,6 @@ class BaseTrainer:
         self.check_early_stopping()
 
     def fit(self, train_loader, valid_loader):
-        wandb_watch(self.model)
         self.train_loader = train_loader
         self.valid_loader = valid_loader
         for epoch in range(self.config.train.epochs):
