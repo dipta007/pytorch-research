@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from utils.utils import (
     ensure_dir,
+    load_model,
     save_model,
     summary_model,
     to_device,
@@ -198,7 +199,20 @@ class BaseTrainer:
 
     def run(self):
         log.info("Starting Training....")
-        self.fit(self.train_dataloader, self.val_dataloader)
+        try:
+            self.fit(self.train_dataloader, self.val_dataloader)
+        except Exception as e:
+            log.error(f"Error: {e}")
+
+        self.test()
+
+    def test(self):
+        self.model = load_model(
+            f"{self.config.train.model_dir}/{self.config.exp_name}.pt",
+            self.config.device,
+        )
+        self.model.eval()
+        log.info("No test provided/needed")
 
     def get_optimizer(self):
         log.info(f"Using optimizer: {self.optimizer_partial}")
