@@ -127,9 +127,12 @@ def wandb_log(wandb_dict):
         pass
 
 
-def wandb_summary(name, value):
+def wandb_summary(name, value, update=None):
     try:
-        wandb.run.summary[name] = value
+        if update is None or name not in wandb.run.summary.keys():
+            wandb.run.summary[name] = value
+        else:
+            wandb.run.summary[name] = update(wandb.run.summary[name], value)
     except Exception as e:
         pass
 
@@ -184,9 +187,7 @@ def save_model(model, path):
 
 
 def load_model(path, device="cpu"):
-    model = torch.load(path)
-    model = to_device(model, device)
-    return model
+    return torch.load(path, map_location=device)
 
 
 def save_pickle(obj, path):
