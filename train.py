@@ -27,16 +27,21 @@ def main(cfg):
         ("cuda" if torch.cuda.is_available() else "mps") if config.cuda else "cpu"
     )
     if not config.debug:
+        exp_name = config.exp_name
         run = wandb.init(
-            name=cfg.exp_name,
             entity=cfg.wandb.entity,
             project=cfg.wandb.project,
             config=config,
             settings=wandb.Settings(start_method="thread"),
         )
+        if not config.sweep:
+            wandb.run.name = exp_name
+            wandb.run.save()
+
         log.info(f"WANDB url: {wandb.run.get_url()}")
         wandb_log_code(run)
         config = DotDict(wandb.config)
+        config.exp_name = exp_name if not config.sweep else run.name
 
     print_repo_info()
     print_config(config)

@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import linecache
 import logging
@@ -261,3 +262,15 @@ def get_file_line(file, line_num):
 def safe_log(val):
     eps = 1e-7
     return torch.log(val + eps)
+
+
+def removeFilesByMatchingPattern(dirPath, pattern):
+    for parentDir, dirnames, filenames in os.walk(dirPath):
+        for filename in fnmatch.filter(filenames, pattern):
+            try:
+                os.remove(os.path.join(parentDir, filename))
+                log.info(f"Deleted file : {os.path.join(parentDir, filename)}")
+            except:
+                log.error(
+                    f"Error while deleting file : {os.path.join(parentDir, filename)}"
+                )

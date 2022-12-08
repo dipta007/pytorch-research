@@ -21,4 +21,7 @@ command:
   - ${program}
   - +experiment=exp_name
   - ++debug=False
+  - +sweep=True
+  - ++hydra.run.dir=./experiments/sweep
+  - ++hydra.job.name=sweep
   - ${args_no_hyphens}

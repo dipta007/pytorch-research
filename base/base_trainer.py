@@ -9,6 +9,7 @@ from tqdm import tqdm
 from utils.utils import (
     ensure_dir,
     load_model,
+    removeFilesByMatchingPattern,
     save_model,
     summary_model,
     to_device,
@@ -209,6 +210,12 @@ class BaseTrainer:
             log.error(f"Error: {e}")
 
         self.test()
+
+        if self.config.sweep:
+            removeFilesByMatchingPattern(
+                self.config.train.model_dir, f"*{self.config.exp_name}*.pt"
+            )
+            log.info(f"Deleted model files for sweep {self.config.exp_name}")
 
     def test(self):
         self.model = load_model(
